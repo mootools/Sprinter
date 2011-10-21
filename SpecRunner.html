@@ -78,7 +78,9 @@
 					iframesWrapper.appendChild(heading);
 					var iframe = document.createElement('iframe');
 					iframesWrapper.appendChild(iframe);
-					iframe.src = '../' + name + '/Specs/' + packagesuites[j] + '.html?' + +(new Date);
+					iframe.src = '../' + name + '/Specs/'
+							+ packagesuites[j] + '.html?' + +(new Date)
+							+ '&path=' + encodeURI(location.pathname.match(/(.*\/)\w+\.html$/i)[1]);
 				}
 			}
 			location.hash = '#' + stringifyModulesHash();
