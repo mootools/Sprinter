@@ -14,17 +14,30 @@
 
 	// in order loading of the JS files
 	var loadJS = function(scripts, fn){
-		var length = scripts.length, now = 0;
-		var next = function(){
-			if (now >= length) fn();
+		var now = 0, timer;
+		var next = function(i){
+			clearTimeout(timer);
+			if (i < now){}
+			else if (now >= scripts.length) fn();
 			else {
 				var script = document.createElement('script');
-				script.onload = next;
+				if (typeof script.onreadystatechange != 'undefined'){
+					script.onreadystatechange = function(){
+						if (script.readyState == 'complete' || script.readyState == 'loaded'){
+							next(i + 1);
+						}
+					};
+				} else {
+					script.onload = function(){ next(i + 1) };
+				}
 				script.src = scripts[now++];
 				html.appendChild(script);
+				timer = setTimeout(function(){
+					throw new Error('timedout loading script: ' + scripts[i]);
+				}, 5000);
 			}
 		};
-		next();
+		next(0);
 	};
 
 	var loadCSS = function(links){
