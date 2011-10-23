@@ -87,12 +87,12 @@
 	// start loading all files and stuff
 	loadJS([
 		path + 'SimpleRequest.js',
-		path + 'jasmine/lib/jasmine-core/jasmine.js',
-		path + 'jasmine/lib/jasmine-core/jasmine-html.js'
+		path + 'jasmine/jasmine.js',
+		path + 'jasmine/jasmine-html.js'
 	], loadSuiteConfig);
 
 	loadCSS([
-		path + 'jasmine/lib/jasmine-core/jasmine.css'
+		path + 'jasmine/jasmine.css'
 	]);
 
 })();
