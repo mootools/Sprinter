@@ -3,73 +3,84 @@
 var sys = require('sys');
 var fs = require('fs');
 
+var ProjectSpecs = function(path, suites){
+	if (!suites){
+		var split = path.split('/');
+		suites = split[1] ? split[1].split(',') : ['SpecRunner'];
+		// called through Sprinter/NodeRunner.js or Base/Specs/Sprinter/NodeRunner.js
+		path = split[0] ? ('../' + split[0] + '/Specs') : '../';
+	}
+	this.path = path;
+	this.suites = suites;
+	this.config = {};
+};
+
+ProjectSpecs.prototype.loadConfig = function(fn){
+	var self = this;
+	fs.readFile(this.path + '/suites.json', function(err, data){
+		if (err) throw err;
+		self.config = JSON.parse(data);
+		if (fn) fn.call(self, self.data);
+	});
+};
+
+ProjectSpecs.prototype.require = function(fn){
+	var todo = this.suites.length;
+	if (todo == 0) return fn();
+	var _fn = function(){
+		if (--todo == 0) fn();
+	};
+	this.suites.forEach(function(suite){
+		var config = this.config[suite], req;
+		if (config && config.requirejs){
+			req = require('./requirejs/r.js');
+			config.requirejs.baseUrl = this.path;
+			req.config(config.requirejs);
+			req(config.modules, _fn);
+		} else {
+			// always call the _fn function, so fn will be executed eventually
+			_fn();
+		}
+	}, this);
+};
+
 // make jasmine functions global (like describe, it, jasmine)
 var jas = require('./jasmine/jasmine')
 for (var p in jas) global[p] = jas[p];
 
-// suites we'll run
-var suites = {};
-var numberOfSuites = 0;
+// number of project we have
+var projects = 0;
 
 // parse which repositories and which suites we'll run
 // this file can be called with: `./NodeRunner.js Base/SpecRunner,Node DOM/specificity`
 var repositories = process.argv.slice(2);
+
+console.log('Using these paths:');
 repositories.forEach(function(value){
-	var split = value.split('/');
-	var _suites = ['SpecRunner'];
-	if (split[1]) _suites = split[1].split(',');
-	if (!split[0]){
-		suites['../'] = _suites;
-	} else {
-		suites['../' + split[0] + '/Specs'] = _suites;
-	}
-	numberOfSuites += _suites.length;
-});
-
-var paths = Object.keys(suites);
-
-console.log('Using these paths:' + [null].concat(paths).join('\n- '));
-console.log('Testing ' + numberOfSuites + ' test suites');
-
-// load suites.json files
-paths.forEach(function(value){
-	fs.readFile(value + '/suites.json', function(err, data){
-		if (err) throw err;
-		loadSuite(value, JSON.parse(data));
+	var project = new ProjectSpecs(value);
+	console.log('- ' + project.path);
+	project.loadConfig(function(){
+		this.require(startSpecRunner);
 	});
+	projects++;
 });
-
-// use requirejs() or another require() function to load the modules
-var loadSuite = function(value, conf){
-	var _suites = suites[value];
-	if (_suites && _suites.length) _suites.forEach(function(suite){
-		var config = conf[suite], req;
-		if (config && config.requirejs){
-			req = require('./requirejs/r.js');
-			config.requirejs.baseUrl = value;
-			req.config(config.requirejs);
-			console.log(config.modules);
-			req(config.modules, startSpecRunner);
-		}
-	});
-};
 
 // The Jasmine-Node reporter is the only file we need
-var TerminalReporter = require('./jasmine-node/reporter').TerminalReporter;
+var TerminalReporter = require('./jasmine/reporter').TerminalReporter;
 
 jasmine.getEnv().addReporter(new TerminalReporter({
 	print:       sys.print,
 	verbose:     false,
 	color:       true,
 	onComplete:  function(){
-		process.exit(-1);
+		process.exit(0);
 	}
 }));
 
-var suitesToDo = numberOfSuites;
+var projectsToRequire = projects;
 var startSpecRunner = function(){
 	// execute the specs
-	if (--suitesToDo == 0){
+	if (--projectsToRequire == 0){
 		console.log('\n');
 		jasmine.getEnv().execute();
 	}
